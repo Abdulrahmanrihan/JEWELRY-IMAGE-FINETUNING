@@ -1,32 +1,23 @@
 # Core UI framework
-streamlit
+streamlit>=1.32.0
 
 # Image handling
-Pillow
+Pillow>=10.2.0
 
-# Core AI / Deep Learning Libraries (Install PyTorch separately based on CUDA/CPU needs)
-# See: https://pytorch.org/get-started/locally/
-# Base torch - might need specific version or CUDA variant from PyTorch website
-torch
-torchvision
-torchaudio
+# Core AI / Deep Learning Libraries
+torch>=2.2.0
+torchvision>=0.17.0
+torchaudio>=2.2.0
 
-# Hugging Face Libraries for Diffusion models and Training
-diffusers
-transformers
-accelerate # For launching training script
-safetensors # For model weight handling
+# Hugging Face Libraries
+diffusers>=0.27.0
+transformers>=4.37.0
+accelerate>=0.27.0
+safetensors>=0.4.0
+peft>=0.8.0  # Required for LoRA
 
-# Optional but recommended for training performance/memory saving on GPU
-bitsandbytes # Required for 8-bit Adam optimizer (check compatibility, mainly Linux/WSL)
+bitsandbytes>=0.42.0  # Required for 8-bit Adam optimizer
 
-# Optional but sometimes needed by transformers/CLIP for text processing
-ftfy
+ftfy>=6.1.1
 
-# Note:
-# - For GPU support (required for efficient fine-tuning), install the correct PyTorch version
-#   for your CUDA setup from the official PyTorch website BEFORE running `pip install -r requirements.txt`
-#   or install it afterwards, potentially overwriting the basic 'torch' installed by this file.
-# - 'bitsandbytes' installation might require specific steps depending on your OS (especially Windows/macOS).
-# - You might need to install development tools (like build-essentials on Linux, or Visual Studio build tools on Windows)
-#   for some dependencies.
+peft
