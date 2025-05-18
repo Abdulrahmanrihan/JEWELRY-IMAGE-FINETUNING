@@ -1,11 +1,12 @@
 import os
 import streamlit as st
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import time
 from glob import glob
 import shutil
 import sys
 import torch
+import asyncio
 from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 import random
 import subprocess
@@ -49,18 +50,28 @@ os.makedirs(INPUTS_DIR, exist_ok=True)
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
 os.makedirs(BASE_MODELS_DIR, exist_ok=True) # Ensure base models dir exists
 
-# Check for GPU availability and set device/dtype
+# Initialize PyTorch with proper error handling and event loop management
 try:
+    # Set up event loop if not already running
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    # Initialize PyTorch
+    torch.manual_seed(42)
     if torch.cuda.is_available():
         device = "cuda"
-        torch_dtype = torch.float16 # Use float16 for faster inference/training on GPU
+        torch_dtype = torch.float16
+        torch.cuda.manual_seed_all(42)
         st.sidebar.success("GPU detected. Using CUDA.")
     else:
         device = "cpu"
-        torch_dtype = torch.float32 # CPU requires float32
+        torch_dtype = torch.float32
         st.sidebar.warning("No GPU detected. Using CPU (will be significantly slower).")
 except Exception as e:
-    st.sidebar.error(f"Error checking torch/CUDA: {e}. Defaulting to CPU.")
+    st.sidebar.error(f"Error initializing PyTorch: {e}. Defaulting to CPU.")
     device = "cpu"
     torch_dtype = torch.float32
 
@@ -197,7 +208,7 @@ def display_folder_images(folder_path, columns=4, caption_prefix=""):
         try:
             with cols[i % columns]:
                 img = Image.open(image_path)
-                st.image(img, caption=os.path.basename(image_path), use_column_width="always")
+                st.image(img, caption=os.path.basename(image_path), use_container_width=True)
         except UnidentifiedImageError:
              st.error(f"Could not load image (unsupported format?): {os.path.basename(image_path)}", icon="❓")
         except Exception as e:
@@ -365,7 +376,7 @@ def generate_images(pipeline, prompt, negative_prompt, num_images, guidance_scal
                     generated_files_count += 1
                     end_time_img = time.time()
                     # Show the generated image immediately in the placeholder
-                    image_placeholder.image(image, caption=f"Generated: {output_filename} ({end_time_img - start_time_img:.2f}s)", use_column_width=True)
+                    image_placeholder.image(image, caption=f"Generated: {output_filename} ({end_time_img - start_time_img:.2f}s)", use_container_width=True)
                 except Exception as e:
                     st.error(f"Failed to save generated image {output_filename}. Error: {e}")
 
@@ -846,7 +857,7 @@ def main():
             # Effective Batch Size = train_batch_size * gradient_accumulation_steps
             train_batch_size = st.select_slider("Batch Size (per GPU)", options=[1, 2, 4], value=1, help="Images per step per GPU. Keep low (1) for limited VRAM (e.g., <=16GB).")
             gradient_accumulation_steps = st.select_slider("Gradient Accumulation", options=[1, 2, 4, 8, 16, 32], value=4, help="Accumulate gradients over N steps to simulate larger batch size. Effective Batch Size = Batch Size * Accumulation.")
-            learning_rate = st.select_slider("Learning Rate", options=[5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4], value=1e-4, format="%.1e", help="How fast the model adapts. 1e-4 to 5e-5 is often a good starting range for LoRA.")
+            learning_rate = st.select_slider("Learning Rate", options=[5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4], value=1e-4, help="How fast the model adapts. 1e-4 to 5e-5 is often a good starting range for LoRA.")
 
         st.caption(f"Effective Batch Size = {train_batch_size} * {gradient_accumulation_steps} = {train_batch_size * gradient_accumulation_steps}")
 
